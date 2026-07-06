@@ -1,0 +1,12 @@
+{
+    "Project Name": "Medical Insurance Cost Prediction",
+    "Dataset Name": "Insurance Dataset",
+    "Problem Type": "Regression",
+    "Target Column": "charges",
+    "Best Model": "Gradient Boosting",
+    "MAE": 2404.90176028892,
+    "MSE": 18732863.283815846,
+    "RMSE": 4328.147789045083,
+    "R2 Score": 0.8793364486536337,
+    "Date Created": "2026-07-06 08:37:49"
+}
