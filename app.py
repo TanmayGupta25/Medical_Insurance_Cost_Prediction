@@ -1,72 +1,186 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 import json
 
-# Load artifacts
+st.set_page_config(
+    page_title="Medical Insurance Cost Prediction",
+    layout="wide"
+)
+
+# ---------- Load Artifacts ----------
+@st.cache_resource
 def load_artifacts():
     model = joblib.load("models/best_model.pkl")
-    preprocessor = joblib.load("models/preprocessor.pkl")
-    feature_cols = joblib.load("models/feature_columns.pkl")
+
+    try:
+        preprocessor = joblib.load("models/preprocessor.pkl")
+    except Exception:
+        preprocessor = None
+
+    try:
+        feature_cols = joblib.load("models/feature_columns.pkl")
+    except Exception:
+        feature_cols = None
+
     with open("models/metadata.json", "r") as f:
         metadata = json.load(f)
+
     return model, preprocessor, feature_cols, metadata
 
-model, preprocessor, feature_cols, metadata = load_artifacts()
 
-st.set_page_config(page_title="Insurance Prediction", layout="wide")
+try:
+    model, preprocessor, feature_cols, metadata = load_artifacts()
+except Exception as e:
+    st.error("Error loading project artifacts.")
+    st.exception(e)
+    st.stop()
 
-menu = ["Home", "About Dataset", "About Model", "Prediction", "Developer"]
+# ---------- Sidebar ----------
+menu = [
+    "Home",
+    "About Dataset",
+    "About Model",
+    "Prediction",
+    "Developer"
+]
+
 choice = st.sidebar.selectbox("Navigation", menu)
 
+# ---------- Home ----------
 if choice == "Home":
+
     st.title("Medical Insurance Cost Prediction")
     st.subheader("Summer School 2026")
-    st.markdown(f"**Author:** Tanmay Gupta")
-    st.markdown("--- ")
-    st.write(f"**Problem Type:** {metadata['Problem Type']}")
-    st.write(f"**Best Model:** {metadata['Best Model']}")
 
+    st.markdown("### Developer")
+    st.write("Tanmay Gupta")
+
+    st.markdown("---")
+
+    st.write("**Problem Type:**", metadata.get("Problem Type", "Regression"))
+    st.write("**Best Model:**", metadata.get("Best Model", "N/A"))
+
+# ---------- Dataset ----------
 elif choice == "About Dataset":
+
     st.title("About Dataset")
-    st.write(f"**Dataset Name:** {metadata['Dataset Name']}")
-    st.write(f"**Target Column:** {metadata['Target Column']}")
-    st.write("**Number of Features:** 6")
 
+    st.write("**Dataset Name:**", metadata.get("Dataset Name", "Insurance Dataset"))
+    st.write("**Target Column:**", metadata.get("Target Column", "charges"))
+    st.write("**Number of Features:**", 6)
+
+# ---------- Model ----------
 elif choice == "About Model":
+
     st.title("About Model")
-    st.write(f"**Best Model:** {metadata['Best Model']}")
-    st.write(f"**MAE:** {metadata['MAE']:.2f}")
-    st.write(f"**RMSE:** {metadata['RMSE']:.2f}")
-    st.write(f"**R² Score:** {metadata['R2 Score']:.4f}")
 
+    st.write("**Best Model:**", metadata.get("Best Model", "N/A"))
+
+    if "MAE" in metadata:
+        st.write(f"**MAE:** {metadata['MAE']:.2f}")
+
+    if "RMSE" in metadata:
+        st.write(f"**RMSE:** {metadata['RMSE']:.2f}")
+
+    if "R2 Score" in metadata:
+        st.write(f"**R² Score:** {metadata['R2 Score']:.4f}")
+
+# ---------- Prediction ----------
 elif choice == "Prediction":
-    st.title("Predict Insurance Cost")
-    with st.form("prediction_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            age = st.number_input("Age", min_value=0, max_value=120, value=30)
-            bmi = st.number_input("BMI", min_value=10.0, max_value=60.0, value=25.0)
-            children = st.number_input("Children", min_value=0, max_value=10, value=0)
-        with col2:
-            sex = st.selectbox("Sex", ["male", "female"])
-            smoker = st.selectbox("Smoker", ["yes", "no"])
-            region = st.selectbox("Region", ["southwest", "southeast", "northwest", "northeast"])
-        
-        submit = st.form_submit_button("Predict")
-        
-    if submit:
-        try:
-            with st.spinner("Calculating..."):
-                input_df = pd.DataFrame([[age, sex, bmi, children, smoker, region]], 
-                                       columns=["age", "sex", "bmi", "children", "smoker", "region"])
-                prediction = model.predict(input_df)[0]
-                st.success(f"### Predicted Medical Insurance Cost: ${prediction:,.2f}")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
 
+    st.title("Medical Insurance Cost Prediction")
+
+    with st.form("prediction_form"):
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            age = st.number_input(
+                "Age",
+                min_value=0,
+                max_value=120,
+                value=30
+            )
+
+            bmi = st.number_input(
+                "BMI",
+                min_value=10.0,
+                max_value=60.0,
+                value=25.0
+            )
+
+            children = st.number_input(
+                "Children",
+                min_value=0,
+                max_value=10,
+                value=0
+            )
+
+        with col2:
+
+            sex = st.selectbox(
+                "Sex",
+                ["male", "female"]
+            )
+
+            smoker = st.selectbox(
+                "Smoker",
+                ["yes", "no"]
+            )
+
+            region = st.selectbox(
+                "Region",
+                [
+                    "southwest",
+                    "southeast",
+                    "northwest",
+                    "northeast"
+                ]
+            )
+
+        submitted = st.form_submit_button("Predict")
+
+    if submitted:
+
+        input_df = pd.DataFrame(
+            [[
+                age,
+                sex,
+                bmi,
+                children,
+                smoker,
+                region
+            ]],
+            columns=[
+                "age",
+                "sex",
+                "bmi",
+                "children",
+                "smoker",
+                "region"
+            ]
+        )
+
+        try:
+
+            with st.spinner("Predicting..."):
+
+                prediction = model.predict(input_df)[0]
+
+            st.success(
+                f"Predicted Medical Insurance Cost: ${prediction:,.2f}"
+            )
+
+        except Exception as e:
+
+            st.error("Prediction failed.")
+            st.exception(e)
+
+# ---------- Developer ----------
 elif choice == "Developer":
-    st.title("Developer Information")
+
+    st.title("Developer")
+
     st.write("**Developer:** Tanmay Gupta")
     st.write("**Programme:** Summer School 2026")
